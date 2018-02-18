@@ -15,17 +15,28 @@ import (
 
 func main() {
 	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	bugsnagApiKey, ok := os.LookupEnv("BUGSNAG_API_KEY")
+	if !ok {
+		log.Fatal("BUGSNAG_API_KEY not set")
 	}
-	bugsnagApiKey := os.Getenv("BUGSNAG_API_KEY")
 	bugsnag.Configure(bugsnag.Configuration{
 		APIKey: bugsnagApiKey,
 	})
 
-	domainName := os.Getenv("DOMAIN_NAME")
-	username := os.Getenv("OVH_USERNAME")
-	password := os.Getenv("OVH_PASSWORD")
+	domainName, ok := os.LookupEnv("DOMAIN_NAME")
+	if !ok {
+		log.Fatal("DOMAIN_NAME not set")
+	}
+
+	username, ok := os.LookupEnv("OVH_USERNAME")
+	if !ok {
+		log.Fatal("OVH_USERNAME not set")
+	}
+
+	password, ok := os.LookupEnv("OVH_PASSWORD")
+	if !ok {
+		log.Fatal("OVH_PASSWORD not set")
+	}
 
 	ipAddress := ""
 	prevIpAddress := ""
