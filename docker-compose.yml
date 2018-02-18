@@ -1,0 +1,8 @@
+version: '2.1'
+
+services:
+  ovh-ip-updater-go:
+    container_name: ovh-ip-updater-go
+    image: ovh-ip-updater-go
+    build: .
+    env_file: .env
