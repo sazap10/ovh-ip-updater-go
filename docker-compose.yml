@@ -1,8 +1,8 @@
-version: '2.1'
+version: '3'
 
 services:
   ovh-ip-updater-go:
     container_name: ovh-ip-updater-go
-    image: ovh-ip-updater-go
+    image: sazap10/ovh-ip-updater
     build: .
     env_file: .env
