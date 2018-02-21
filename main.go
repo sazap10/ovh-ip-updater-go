@@ -15,12 +15,12 @@ import (
 
 func main() {
 	err := godotenv.Load()
-	bugsnagApiKey, ok := os.LookupEnv("BUGSNAG_API_KEY")
+	bugsnagAPIKey, ok := os.LookupEnv("BUGSNAG_API_KEY")
 	if !ok {
 		log.Fatal("BUGSNAG_API_KEY not set")
 	}
 	bugsnag.Configure(bugsnag.Configuration{
-		APIKey: bugsnagApiKey,
+		APIKey: bugsnagAPIKey,
 	})
 
 	domainName, ok := os.LookupEnv("DOMAIN_NAME")
@@ -39,16 +39,16 @@ func main() {
 	}
 
 	ipAddress := ""
-	prevIpAddress := ""
+	prevIPAddress := ""
 
 	for {
-		prevIpAddress = ipAddress
+		prevIPAddress = ipAddress
 
-		ipAddress, err = getIpAddress()
+		ipAddress, err = getIPAddress()
 		if err != nil {
 			bugsnag.Notify(err)
-		} else if prevIpAddress != ipAddress {
-			setDyndnsIpAddress(ipAddress, domainName, username, password)
+		} else if prevIPAddress != ipAddress {
+			setDyndnsIPAddress(ipAddress, domainName, username, password)
 		} else {
 			log.Println("IP address is the same, skipping OVH set")
 		}
@@ -57,7 +57,7 @@ func main() {
 
 }
 
-func getIpAddress() (string, error) {
+func getIPAddress() (string, error) {
 	resp, err := http.Get("https://api.ipify.org")
 	if err != nil {
 		return "", errors.New("Unable to get IP Address")
@@ -70,7 +70,7 @@ func getIpAddress() (string, error) {
 	return string(body), nil
 }
 
-func setDyndnsIpAddress(ipAddress string, domainName string, username string, password string) {
+func setDyndnsIPAddress(ipAddress string, domainName string, username string, password string) {
 	client := &http.Client{}
 	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", domainName, ipAddress)
 	req, err := http.NewRequest("GET", url, nil)
