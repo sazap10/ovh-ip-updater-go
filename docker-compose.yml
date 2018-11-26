@@ -6,3 +6,4 @@ services:
     image: sazap10/ovh-ip-updater
     build: .
     env_file: .env
+    restart: always
