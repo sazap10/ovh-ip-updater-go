@@ -1,0 +1,31 @@
+{
+  "Enable": [
+    "deadcode",
+    "dupl",
+    "gocyclo",
+    "goconst",
+    "gofmt",
+    "goimports",
+    "golint",
+    "gosimple",
+    "gotype",
+    "gotypex",
+    "ineffassign",
+    "interfacer",
+    "lll",
+    "maligned",
+    "misspell",
+    "nakedret",
+    "megacheck",
+    "structcheck",
+    "staticcheck",
+    "unconvert",
+    "varcheck",
+    "vet",
+    "vetshadow"
+  ],
+  "LineLength": 200,
+  "Cyclo": 14,
+  "DuplThreshold": 300,
+  "Deadline": "180s"
+}

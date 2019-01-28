@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bugsnag/bugsnag-go"
@@ -14,7 +15,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
+	godotenv.Load()
 	bugsnagAPIKey, ok := os.LookupEnv("BUGSNAG_API_KEY")
 	if !ok {
 		log.Fatal("BUGSNAG_API_KEY not set")
@@ -23,9 +24,9 @@ func main() {
 		APIKey: bugsnagAPIKey,
 	})
 
-	domainName, ok := os.LookupEnv("DOMAIN_NAME")
+	domains, ok := getDomains()
 	if !ok {
-		log.Fatal("DOMAIN_NAME not set")
+		log.Fatal("DOMAINS not set")
 	}
 
 	username, ok := os.LookupEnv("OVH_USERNAME")
@@ -44,11 +45,14 @@ func main() {
 	for {
 		prevIPAddress = ipAddress
 
-		ipAddress, err = getIPAddress()
+		ipAddress, err := getIPAddress()
 		if err != nil {
 			bugsnag.Notify(err)
 		} else if prevIPAddress != ipAddress {
-			setDyndnsIPAddress(ipAddress, domainName, username, password)
+			for _, domainName := range domains {
+				fmt.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
+				setDyndnsIPAddress(ipAddress, domainName, username, password)
+			}
 		} else {
 			log.Println("IP address is the same, skipping OVH set")
 		}
@@ -89,4 +93,14 @@ func setDyndnsIPAddress(ipAddress string, domainName string, username string, pa
 		bugsnag.Notify(err)
 	}
 	log.Println(string(body))
+}
+
+func getDomains() ([]string, bool) {
+	domainsEnv, ok := os.LookupEnv("DOMAINS")
+	if !ok {
+		return nil, false
+	}
+	domains := strings.Split(domainsEnv, ",")
+
+	return domains, true
 }
