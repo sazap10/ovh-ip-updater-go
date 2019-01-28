@@ -48,19 +48,6 @@ RUN gometalinter ./... --vendor
 # RUN go test ./... -race -timeout 30m -p 1
 
 ################################################################################
-# DEBUG IMAGES
-################################################################################
-
-FROM alpine:3.8 as debug
-
-RUN apk add --no-cache libc6-compat
-
-COPY --from=builder /build/mongo-sidecar /app/
-COPY --from=builder /go/bin/dlv /
-
-CMD [ "/dlv", "exec", "-l", ":2345", "--headless=true", "--log=true", "--api-version=2", "/app/mongo-sidecar" ]
-
-################################################################################
 # FINAL IMAGE
 ################################################################################
 
