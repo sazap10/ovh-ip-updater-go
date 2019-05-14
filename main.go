@@ -50,7 +50,7 @@ func main() {
 		ipAddress, err := getIPAddress()
 		switch {
 		case err != nil:
-			Notify(err)
+			notify(err)
 		case prevIPAddress != ipAddress:
 			for _, domainName := range domains {
 				fmt.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
@@ -83,18 +83,18 @@ func setDyndnsIPAddress(ipAddress string, domainName string, username string, pa
 	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", domainName, ipAddress)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		Notify(err)
+		notify(err)
 	}
 	req.SetBasicAuth(username, password)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		Notify(err)
+		notify(err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		Notify(err)
+		notify(err)
 	}
 	log.Println(string(body))
 }
@@ -109,7 +109,7 @@ func getDomains() ([]string, bool) {
 	return domains, true
 }
 
-func Notify(err error) {
+func notify(err error) {
 	_, ok := os.LookupEnv("BUGSNAG_API_KEY")
 
 	if ok {
