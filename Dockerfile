@@ -1,7 +1,7 @@
 ################################################################################
 # BUILDER/DEVELOPMENT IMAGE
 ################################################################################
-FROM golang:1.11-alpine as builder
+FROM golang:1.12-alpine as builder
 
 # Add git for downloading dependencies
 RUN apk add --no-cache git gcc g++ libc-dev
@@ -12,7 +12,8 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-ADD main.go ./
+COPY main.go ./
+COPY script/* ./script/
 
 RUN go build
 
@@ -20,45 +21,38 @@ RUN go build
 # LINT IMAGE
 ################################################################################
 
-FROM golang:1.11 as ci
-
-# Provide stracktraces from all user go routines
-ENV GOTRACEBACK all
+FROM golang:1.12 as ci
 
 # Ensure we run all go commands against the vendor folder
-ENV GOFLAGS -mod=vendor
+ENV GOFLAGS -tags=ci
 
-# Set the go path
-ENV GOPATH /gopath
-ENV PATH="/${GOPATH}/bin:${PATH}"
+# Install linter
+RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.15.0
 
-# Install gometalinter
-RUN curl -L https://git.io/vp6lP | sh
-
-WORKDIR /gopath/src/github.com/sazap10/ovh-ip-updater-go
+WORKDIR /build
 
 COPY --from=builder /build .
-COPY .gometalinter.json .
-RUN GO111MODULE=on go mod vendor
+COPY .golangci.yml .
+
+RUN go mod download
 
 # Lint code
-RUN gometalinter ./... --vendor
-
-# Run tests
-# RUN go test ./... -race -timeout 30m -p 1
+RUN golangci-lint run -v
 
 ################################################################################
 # FINAL IMAGE
 ################################################################################
 
-FROM alpine:3.8
+FROM alpine:3.9
 
 ENV BUILD_DIR=/build
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates bash
 
-COPY --from=builder $BUILD_DIR/ovh-ip-updater-go .
+COPY --from=builder $BUILD_DIR/ovh-ip-updater-go ${BUILD_DIR}/script/run.sh ./
 
-CMD ["./ovh-ip-updater-go"]
+RUN chmod +x run.sh
+
+CMD ["./run.sh"]
