@@ -3,7 +3,7 @@ version: '3'
 services:
   ovh-ip-updater-go:
     container_name: ovh-ip-updater-go
-    image: sazap10/ovh-ip-updater
+    image: sazap10/ovh-ip-updater-go
     build: .
     env_file: .env
     restart: always
