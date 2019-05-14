@@ -15,14 +15,16 @@ import (
 )
 
 func main() {
-	godotenv.Load()
-	bugsnagAPIKey, ok := os.LookupEnv("BUGSNAG_API_KEY")
-	if !ok {
-		log.Fatal("BUGSNAG_API_KEY not set")
+	err := godotenv.Load()
+	if err != nil {
+		log.Println(".env not provided, using environment variables instead")
 	}
-	bugsnag.Configure(bugsnag.Configuration{
-		APIKey: bugsnagAPIKey,
-	})
+	bugsnagAPIKey, ok := os.LookupEnv("BUGSNAG_API_KEY")
+	if ok {
+		bugsnag.Configure(bugsnag.Configuration{
+			APIKey: bugsnagAPIKey,
+		})
+	}
 
 	domains, ok := getDomains()
 	if !ok {
@@ -46,16 +48,18 @@ func main() {
 		prevIPAddress = ipAddress
 
 		ipAddress, err := getIPAddress()
-		if err != nil {
-			bugsnag.Notify(err)
-		} else if prevIPAddress != ipAddress {
+		switch {
+		case err != nil:
+			Notify(err)
+		case prevIPAddress != ipAddress:
 			for _, domainName := range domains {
 				fmt.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
 				setDyndnsIPAddress(ipAddress, domainName, username, password)
 			}
-		} else {
+		default:
 			log.Println("IP address is the same, skipping OVH set")
 		}
+
 		time.Sleep(1 * time.Hour)
 	}
 
@@ -79,18 +83,18 @@ func setDyndnsIPAddress(ipAddress string, domainName string, username string, pa
 	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", domainName, ipAddress)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		bugsnag.Notify(err)
+		Notify(err)
 	}
 	req.SetBasicAuth(username, password)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		bugsnag.Notify(err)
+		Notify(err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		bugsnag.Notify(err)
+		Notify(err)
 	}
 	log.Println(string(body))
 }
@@ -103,4 +107,14 @@ func getDomains() ([]string, bool) {
 	domains := strings.Split(domainsEnv, ",")
 
 	return domains, true
+}
+
+func Notify(err error) {
+	_, ok := os.LookupEnv("BUGSNAG_API_KEY")
+
+	if ok {
+		bugsnag.Notify(err)
+	} else {
+		log.Println("Error: ", err)
+	}
 }
