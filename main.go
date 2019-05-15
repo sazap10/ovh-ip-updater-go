@@ -42,11 +42,6 @@ func main() {
 		log.Fatal("OVH_PASSWORD not set")
 	}
 
-	sleepDuration, ok := os.LookupEnv("SLEEP_DURATION")
-	if ok {
-
-	}
-
 	ipAddress := ""
 	prevIPAddress := ""
 
