@@ -22,7 +22,7 @@ func main() {
 	bugsnagAPIKey, ok := os.LookupEnv("BUGSNAG_API_KEY")
 	if ok {
 		bugsnag.Configure(bugsnag.Configuration{
-			APIKey: bugsnagAPIKey,
+			APIKey:     bugsnagAPIKey,
 			AppVersion: "1.0.0",
 		})
 	}
@@ -40,6 +40,11 @@ func main() {
 	password, ok := os.LookupEnv("OVH_PASSWORD")
 	if !ok {
 		log.Fatal("OVH_PASSWORD not set")
+	}
+
+	sleepDuration, ok := os.LookupEnv("SLEEP_DURATION")
+	if ok {
+
 	}
 
 	ipAddress := ""
