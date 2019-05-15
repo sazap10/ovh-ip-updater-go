@@ -55,7 +55,7 @@ action "Push image with ref" {
 
 workflow "Build and push on master" {
   on = "push"
-  resolves = ["Filter master"]
+  resolves = ["Push image to latest"]
 }
 
 action "Filter master" {
