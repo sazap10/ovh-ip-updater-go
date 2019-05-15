@@ -23,6 +23,7 @@ func main() {
 	if ok {
 		bugsnag.Configure(bugsnag.Configuration{
 			APIKey: bugsnagAPIKey,
+			AppVersion: "1.0.0",
 		})
 	}
 
