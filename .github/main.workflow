@@ -1,6 +1,5 @@
 workflow "Build and deploy on push" {
   resolves = [
-    "Lint code",
     "Push image",
     "Push image to latest",
     "Push image with ref",
