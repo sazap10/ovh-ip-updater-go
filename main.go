@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +43,8 @@ func main() {
 		log.Fatal("OVH_PASSWORD not set")
 	}
 
+	sleepDuration := envInt("SLEEP_DURATION", 3600)
+
 	ipAddress := ""
 	prevIPAddress := ""
 
@@ -61,7 +64,7 @@ func main() {
 			log.Println("IP address is the same, skipping OVH set")
 		}
 
-		time.Sleep(1 * time.Hour)
+		time.Sleep(time.Duration(sleepDuration) * time.Second)
 	}
 
 }
@@ -118,4 +121,18 @@ func notify(err error) {
 	} else {
 		log.Println("Error: ", err)
 	}
+}
+
+// Gets the environment variable with the specified key and parses as an integer
+// if not set then returns the fallback value
+func envInt(key string, fallback int) int {
+	strValue, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback
+	}
+	value, err := strconv.Atoi(strValue)
+	if err != nil {
+		return fallback
+	}
+	return value
 }
