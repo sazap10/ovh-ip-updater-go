@@ -30,7 +30,7 @@ action "Tag image" {
 action "Push image" {
   uses = "actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108"
   needs = ["Docker login"]
-  args = "push sazap10/ovh-ip-updater-go:$GITHUB_SHA"
+  args = "push sazap10/ovh-ip-updater-go:$IMAGE_SHA"
 }
 
 action "Branch filter" {
