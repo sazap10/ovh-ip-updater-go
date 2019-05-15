@@ -1,6 +1,6 @@
 workflow "Build and tag" {
   resolves = [
-    "Push image"
+    "Push image",
   ]
   on = "push"
 }
@@ -38,7 +38,7 @@ action "Docker login" {
 
 workflow "Build and push on tag" {
   on = "push"
-  resolves = ["Push image with ref"]
+  resolves = ["Report build to bugsnag"]
 }
 
 action "Only run on tag" {
@@ -68,4 +68,10 @@ action "Push image to latest" {
   uses = "actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108"
   needs = ["Filter master"]
   args = "push sazap10/ovh-ip-updater-go:latest"
+}
+
+action "Report build to bugsnag" {
+  uses = "sazap10/bugsnag-builds-action@master"
+  needs = ["Push image with ref"]
+  secrets = ["BUGSNAG_API_KEY"]
 }
