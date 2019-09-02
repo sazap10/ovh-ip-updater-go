@@ -1,0 +1,37 @@
+on: push
+name: Build and push on tag
+jobs:
+  lintCode:
+    name: Lint code
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Lint code
+      uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: build --target ci .
+    - name: Build image
+      uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: build -t ovh-ip-updater-go .
+    - name: Tag image
+      uses: actions/docker/tag@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: ovh-ip-updater-go sazap10/ovh-ip-updater-go
+    - name: Docker login
+      uses: actions/docker/login@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      env:
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+    - name: Only run on tag
+      uses: actions/bin/filter@3c0b4f0e63ea54ea5df2914b4fabf383368cd0da
+      with:
+        args: tag
+    - name: Push image with ref
+      uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: push sazap10/ovh-ip-updater-go:$IMAGE_REF
+    - name: Report build to bugsnag
+      uses: sazap10/bugsnag-builds-action@master
+      env:
+        BUGSNAG_API_KEY: ${{ secrets.BUGSNAG_API_KEY }}

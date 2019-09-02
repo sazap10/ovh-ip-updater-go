@@ -1,0 +1,29 @@
+on: push
+name: Build and tag
+jobs:
+  lintCode:
+    name: Lint code
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Lint code
+      uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: build --target ci .
+    - name: Build image
+      uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: build -t ovh-ip-updater-go .
+    - name: Tag image
+      uses: actions/docker/tag@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: ovh-ip-updater-go sazap10/ovh-ip-updater-go
+    - name: Docker login
+      uses: actions/docker/login@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      env:
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+    - name: Push image
+      uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
+      with:
+        args: push sazap10/ovh-ip-updater-go:$IMAGE_SHA
