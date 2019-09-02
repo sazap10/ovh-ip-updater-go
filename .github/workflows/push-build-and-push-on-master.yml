@@ -1,8 +1,10 @@
-on: push
+on:
+  push:
+    branches:
+      - master
 name: Build and push on master
 jobs:
-  lintCode:
-    name: Lint code
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -23,10 +25,6 @@ jobs:
       env:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-    - name: Filter master
-      uses: actions/bin/filter@3c0b4f0e63ea54ea5df2914b4fabf383368cd0da
-      with:
-        args: branch master
     - name: Push image to latest
       uses: actions/docker/cli@8cdf801b322af5f369e00d85e9cf3a7122f49108
       with:

@@ -1,8 +1,7 @@
 on: push
 name: Build and tag
 jobs:
-  lintCode:
-    name: Lint code
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
