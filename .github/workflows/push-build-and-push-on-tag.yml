@@ -1,7 +1,7 @@
 on:
   push:
-    branches:
-      - releases/*
+    tags:
+      - '*'
 name: Build and push on tag
 jobs:
   build:
