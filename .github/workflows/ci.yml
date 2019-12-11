@@ -5,7 +5,7 @@ on:
     tags:
       - '*'
     pull_request:
-name: Build and push on master
+name: Build, lint and push
 jobs:
   test:
     runs-on: ubuntu-latest
