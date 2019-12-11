@@ -23,7 +23,7 @@ jobs:
       run: docker build -t image .
 
     - name: Docker login
-      run: docker login -u ${{ secrets.DOCKER_PASSWORD }} --password-stdin ${{ secrets.DOCKER_USERNAME }}
+      run: echo "${{ secrets.DOCKER_USERNAME }}" | docker login -u ${{ secrets.DOCKER_PASSWORD }} --password-stdin
 
     - name: Push image
       run: |
