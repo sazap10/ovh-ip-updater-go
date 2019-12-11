@@ -1,9 +1,12 @@
-version: '3'
+version: '3.7'
 
 services:
   ovh-ip-updater-go:
     container_name: ovh-ip-updater-go
     image: sazap10/ovh-ip-updater-go
     build: .
-    env_file: .env
-    restart: always
+  lint:
+    build: 
+      context: .
+      target: ci
+    command: golangci-lint run -v
