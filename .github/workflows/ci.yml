@@ -10,8 +10,8 @@ jobs:
 
     - name: Lint code
       run: |
-        docker-compose build ci
-        docker-compose run ci
+        docker-compose build lint
+        docker-compose run lint
 
   push:
     needs: test
