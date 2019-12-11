@@ -1,0 +1,43 @@
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
+    pull_request:
+name: Build and push on master
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Lint code
+      run: |
+        docker-compose build ci
+        docker-compose run ci
+
+  push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@master
+
+    - name: Build image
+      run: build -t image .
+
+    - name: Docker login
+      run: docker login -u ${{ secrets.DOCKER_PASSWORD }} --password-stdin ${{ secrets.DOCKER_USERNAME }}
+
+    - name: Push image
+      run: |
+        IMAGE_ID=sazap10/ovh-ip-updater-go
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+        docker tag image $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
