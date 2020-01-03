@@ -15,7 +15,6 @@ jobs:
   push:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
     steps:
     - uses: actions/checkout@master
 
@@ -25,14 +24,23 @@ jobs:
     - name: Docker login
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
+    - name: set version
+      run: |
+        echo ::set-env name=PUSH_TYPE::$(echo $GITHUB_REF | cut -d / -f 2)
+        echo ::set-env name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
+
     - name: Push image
       run: |
         IMAGE_ID=sazap10/ovh-ip-updater-go
-        # Strip git ref prefix from version
-        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
         # Use Docker `latest` tag convention
         [ "$VERSION" == "master" ] && VERSION=latest
         echo IMAGE_ID=$IMAGE_ID
         echo VERSION=$VERSION
         docker tag image $IMAGE_ID:$VERSION
         docker push $IMAGE_ID:$VERSION
+
+    - name: Report build to bugsnag
+      uses: sazap10/bugsnag-builds-action@master
+      if: env.PUSH_TYPE == 'tags'
+      env:
+        BUGSNAG_API_KEY: ${{ secrets.BUGSNAG_API_KEY }}
