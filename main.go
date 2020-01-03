@@ -58,7 +58,10 @@ func main() {
 		case prevIPAddress != ipAddress:
 			for _, domainName := range domains {
 				fmt.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
-				setDyndnsIPAddress(ipAddress, domainName, username, password)
+				err = setDyndnsIPAddress(ipAddress, domainName, username, password)
+				if err != nil {
+					notify(err)
+				}
 			}
 		default:
 			log.Println("IP address is the same, skipping OVH set")
@@ -75,6 +78,11 @@ func getIPAddress() (string, error) {
 		return "", errors.New("Unable to get IP Address")
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("Unable to get IP Address, got code: %d", resp.StatusCode)
+	}
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.New("Unable to read api.ipify.org body")
@@ -82,25 +90,26 @@ func getIPAddress() (string, error) {
 	return string(body), nil
 }
 
-func setDyndnsIPAddress(ipAddress string, domainName string, username string, password string) {
+func setDyndnsIPAddress(ipAddress string, domainName string, username string, password string) error {
 	client := &http.Client{}
 	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", domainName, ipAddress)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		notify(err)
+		return err
 	}
 	req.SetBasicAuth(username, password)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		notify(err)
+		return err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		notify(err)
+		return err
 	}
 	log.Println(string(body))
+	return nil
 }
 
 func getDomains() ([]string, bool) {
