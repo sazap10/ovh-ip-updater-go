@@ -80,7 +80,7 @@ func getIPAddress() (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", errors.New(fmt.Sprintf("Unable to get IP Address, got code: %d", resp.StatusCode))
+		return "", fmt.Errorf("Unable to get IP Address, got code: %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
