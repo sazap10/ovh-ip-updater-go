@@ -40,7 +40,7 @@ RUN go mod download
 # FINAL IMAGE
 ################################################################################
 
-FROM alpine:3.11
+FROM alpine:3.12
 
 ENV BUILD_DIR=/build
 
