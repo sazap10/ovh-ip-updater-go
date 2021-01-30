@@ -26,8 +26,8 @@ jobs:
 
     - name: set version
       run: |
-        echo ::set-env name=PUSH_TYPE::$(echo $GITHUB_REF | cut -d / -f 2)
-        echo ::set-env name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
+        echo "PUSH_TYPE=$(echo $GITHUB_REF | cut -d / -f 2)" >> $GITHUB_ENV
+        echo "VERSION=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
 
     - name: Push image
       run: |
