@@ -46,7 +46,7 @@ ENV BUILD_DIR=/build
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates bash
+RUN apk add --no-cache ca-certificates bash tzdata
 
 COPY --from=builder $BUILD_DIR/ovh-ip-updater-go ${BUILD_DIR}/script/run.sh ./
 
