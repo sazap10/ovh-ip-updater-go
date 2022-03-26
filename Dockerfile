@@ -27,7 +27,7 @@ FROM golang:1.18 as ci
 ENV GOFLAGS -tags=ci
 
 # Install linter
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.36.0
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.45.0
 
 WORKDIR /build
 
