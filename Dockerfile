@@ -1,7 +1,7 @@
 ################################################################################
 # BUILDER/DEVELOPMENT IMAGE
 ################################################################################
-FROM golang:1.19-alpine as builder
+FROM golang:1.20-alpine as builder
 
 # Add git for downloading dependencies
 RUN apk add --no-cache git gcc g++ libc-dev
@@ -21,7 +21,7 @@ RUN go build
 # LINT IMAGE
 ################################################################################
 
-FROM golang:1.19 as ci
+FROM golang:1.20 as ci
 
 # Ensure we run all go commands against the vendor folder
 ENV GOFLAGS -tags=ci
@@ -40,7 +40,7 @@ RUN go mod download
 # FINAL IMAGE
 ################################################################################
 
-FROM alpine:3.16
+FROM alpine:3.17
 
 ENV BUILD_DIR=/build
 
