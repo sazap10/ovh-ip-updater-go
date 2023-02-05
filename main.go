@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -83,7 +83,7 @@ func getIPAddress() (string, error) {
 		return "", fmt.Errorf("Unable to get IP Address, got code: %d", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.New("Unable to read api.ipify.org body")
 	}
@@ -104,7 +104,7 @@ func setDyndnsIPAddress(ipAddress string, domainName string, username string, pa
 		return err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}

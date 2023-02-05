@@ -5,4 +5,11 @@ require (
 	github.com/joho/godotenv v1.4.0
 )
 
-go 1.18
+require (
+	github.com/bugsnag/panicwrap v1.3.4 // indirect
+	github.com/gofrs/uuid v4.0.0+incompatible // indirect
+	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+)
+
+go 1.19
