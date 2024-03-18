@@ -1,7 +1,7 @@
 ################################################################################
 # BUILDER/DEVELOPMENT IMAGE
 ################################################################################
-FROM golang:1.21-alpine as builder
+FROM golang:1.22-alpine as builder
 
 # Add git for downloading dependencies
 RUN apk add --no-cache git gcc g++ libc-dev
@@ -21,13 +21,13 @@ RUN go build
 # LINT IMAGE
 ################################################################################
 
-FROM golang:1.21 as ci
+FROM golang:1.22 as ci
 
 # Ensure we run all go commands against the vendor folder
 ENV GOFLAGS -tags=ci
 
 # Install linter
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.51.1
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.56.2
 
 WORKDIR /build
 
@@ -40,7 +40,7 @@ RUN go mod download
 # FINAL IMAGE
 ################################################################################
 
-FROM alpine:3.18
+FROM alpine:3.19
 
 ENV BUILD_DIR=/build
 

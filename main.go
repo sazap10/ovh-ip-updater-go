@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
 	err := godotenv.Load()
 	if err != nil {
 		log.Println(".env not provided, using environment variables instead")
@@ -45,20 +47,24 @@ func main() {
 
 	sleepDuration := envInt("SLEEP_DURATION", 3600)
 
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
+
 	ipAddress := ""
-	prevIPAddress := ""
+	var prevIPAddress string
 
 	for {
 		prevIPAddress = ipAddress
 
-		ipAddress, err := getIPAddress()
+		ipAddress, err := getIPAddress(ctx, client)
 		switch {
 		case err != nil:
 			notify(err)
 		case prevIPAddress != ipAddress:
 			for _, domainName := range domains {
-				fmt.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
-				err = setDyndnsIPAddress(ipAddress, domainName, username, password)
+				log.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
+				err = setDyndnsIPAddress(ctx, client, ipAddress, domainName, username, password)
 				if err != nil {
 					notify(err)
 				}
@@ -69,11 +75,14 @@ func main() {
 
 		time.Sleep(time.Duration(sleepDuration) * time.Second)
 	}
-
 }
 
-func getIPAddress() (string, error) {
-	resp, err := http.Get("https://api.ipify.org")
+func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.ipify.org", nil)
+	if err != nil {
+		return "", errors.New("Unable to create request to api.ipify.org")
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", errors.New("Unable to get IP Address")
 	}
@@ -90,10 +99,9 @@ func getIPAddress() (string, error) {
 	return string(body), nil
 }
 
-func setDyndnsIPAddress(ipAddress string, domainName string, username string, password string) error {
-	client := &http.Client{}
+func setDyndnsIPAddress(ctx context.Context, client *http.Client, ipAddress string, domainName string, username string, password string) error {
 	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", domainName, ipAddress)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
 	}

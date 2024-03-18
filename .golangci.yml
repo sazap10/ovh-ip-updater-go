@@ -4,124 +4,166 @@ run:
   build-tags:
     - ci
 
+  skip-dirs:
+    - test/mock
+  timeout: 5m
+
 linters-settings:
-  errcheck:
-    # report about not checking of errors in type assertions: `a := b.(MyStruct)`;
-    # default is false: such cases aren't reported by default.
-    check-type-assertions: true
-  gocyclo:
-    # minimal code complexity to report
-    min-complexity: 15
-  dupl:
-    # tokens count to trigger issue, 150 by default
-    threshold: 150
-  goconst:
-    # minimal length of string constant, 3 by default
-    # Set to a relatively high value to avoid extracting constants when
-    # keeping them in would be more readable.
-    min-len: 12
+  cyclop:
+    max-complexity: 25
+    skip-tests: true
   depguard:
-    # Packages we don't want to accidentally import
-    packages:
-      # This package has previously broken backwards compatibility in a non-major upgrade
-      # Recommend using github.com/gofrs/uuid instead
-      - github.com/satori/go.uuid
+    rules:
+      main:
+        deny:
+          - pkg: github.com/satori/go.uuid
+            desc: This package has previously broken backwards compatibility in a non-major upgrade. Recommend using github.com/gofrs/uuid instead.
+  errcheck:
+    exclude-functions:
+      - bugsnag.Notify()
+      - (bugsnag-go).Notify
+      - (*net/http.Client).Do
+  exhaustive:
+    default-signifies-exhaustive: true
+  funlen:
+    lines: 150
+    statements: 150
+  gci:
+    sections:
+      - standard # Captures all standard packages if they do not match another section.
+      - default # Contains all imports that could not be matched to another section type.
+      - prefix(github.com/bugsnag) # Groups all imports with the specified Prefix.
+    section-separators:
+      - newLine
+  gocognit:
+    min-complexity: 50
+  goconst:
+    min-occurrences: 8
+  ireturn:
+    allow:
+      - anon
+      - error
+      - empty
+      - stdlib
+      - Connection
   lll:
     line-length: 200
   nakedret:
     # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
     # Disallow naked returns
     max-func-lines: 0
-  gocritic:
-    # Which checks should be enabled; can't be combined with 'disabled-checks';
-    # See https://go-critic.github.io/overview#checks-overview
-    # To check which checks are enabled run `GL_DEBUG=gocritic golangci-lint run`
-    # By default list of stable checks is used.
-    #
-    # These checks are stable, and explicitly defined to ensure reproducible builds
-    enabled-checks:
-      - appendAssign
-      - appendCombine
-      - assignOp
-      - badCond
-      - boolExprSimplify
-      - builtinShadow
-      - captLocal
-      - caseOrder
-      - commentedOutImport
-      - defaultCaseOrder
-      - deprecatedComment
-      - dupArg
-      - dupBranchBody
-      - dupCase
-      - dupSubExpr
-      - elseif
-      - emptyFallthrough
-      - emptyStringTest
-      - equalFold
-      - flagDeref
-      - flagName
-      - hugeParam
-      - ifElseChain
-      - importShadow
-      - indexAlloc
-      - initClause
-      - methodExprCall
-      - nestingReduce
-      - nilValReturn
-      - offBy1
-      - ptrToRefParam
-      - rangeExprCopy
-      - rangeValCopy
-      - regexpMust
-      - singleCaseSwitch
-      - sloppyLen
-      - sloppyReassign
-      - switchTrue
-      - typeSwitchVar
-      - typeUnparen
-      - underef
-      - unlabelStmt
-      - unlambda
-      - unnecessaryBlock
-      - unslice
-      - valSwap
-      - wrapperFunc
-      - weakCond
-      - yodaStyleExpr
+  nestif:
+    min-complexity: 20
+  revive:
+    ignore-generated-header: true
+    severity: warning
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-naming
+      - name: exported
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unreachable-code
+      - name: redefines-builtin-id
+  stylecheck:
+    go: "1.22"
+    # https://staticcheck.io/docs/options#checks
+    checks: ["-ST1005"]
 
 linters:
-  # Run `golangci-lint linters` to see all options + a brief description of each
+  # Disable all linters by default so we can enable them manually to ensure new linters
+  # are not auto included
+  disable-all: true
   enable:
-    - govet
-    - gosimple
-    - golint
-    - gosec
-    - structcheck
-    - interfacer
-    - unconvert
-    - ineffassign
-    - dupl
-    - goconst
-    - deadcode
-    - gocyclo
-    - gofmt
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - cyclop
+    - decorder
     - depguard
+    - dogsled
+    - dupl
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    #   - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    #   - godox
+    #   - goerr113
+    - gofmt
+    #   - gofumpt # Don't need the stricter formatting
+    - goheader
+    - goimports
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - grouper
+    #   - ifshort # Changing if statements to short format is not that important
+    - importas
+    - ineffassign
+    #    - ireturn
+    - lll
+    - maintidx
+    - makezero
     - misspell
     - nakedret
-    - gocritic
-    - gochecknoinits
-    - errcheck
+    - nestif
+    - nilerr
+    #   - nilnil
+    - noctx
+    - nolintlint
+    #   - prealloc # Too many false positives
+    - predeclared
+    - promlinter
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
     - staticcheck
-    - varcheck
+    - stylecheck
+    #   - tagliatelle
+    - tenv
+    - testpackage
+    - thelper
+    - tparallel
     - typecheck
-    - lll
-    - prealloc
-    - scopelint
-    - gochecknoglobals
-
-  enable-all: false # Don't enable all, as the introduction of a new linter would mean a non-reproducible build.
-  disable-all: true
+    - unconvert
+    - unparam
+    - unused
+    - wastedassign
+    - whitespace
+#   - wrapcheck # We don't want to force all errors to be wrapped
+#   - wsl # We don't really care about enforcing empty lines
 
 issues:
   exclude:
@@ -129,11 +171,16 @@ issues:
     - Error return value of `bugsnag.Notify` is not checked
     # gosec: Duplicated errcheck checks
     - G104
+    # gosec: weak random number generator
+    - G404
     # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
     - Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
     # golint: Only require comments on methods
     - exported (const|var) .* should have comment or be unexported
     - comment on exported (const|var) .* should be of the form
+    - \`ctx\` is unused
+    # gocritic: Don't care about this
+    - "appendAssign: append result not assigned to the same slice"
 
   exclude-rules:
     # Exclude some linters from running on tests files.
@@ -144,8 +191,36 @@ issues:
         - dupl
         - gosec
         - scopelint
-
-  exclude-use-default: false
-
-service:
-  golangci-lint-version: 1.15.x # use fixed version to not introduce new linters unexpectedly
+        - gochecknoglobals
+        - noctx
+        - contextcheck
+        - unparam
+        - gocognit
+        - goconst
+        - goerr113
+        - funlen
+        - maintidx
+        - goconst
+        - forcetypeassert
+        - makezero
+        - forbidigo
+        - wastedassign
+        - containedctx
+        - ireturn
+    - path: test/
+      linters:
+        - funlen
+        - unparam
+        - gochecknoglobals
+        - wastedassign
+        - containedctx
+        - ireturn
+    - path: pkg/
+      linters:
+        - testpackage
+    - path: main_test.go
+      linters:
+        - testpackage
+    - linters:
+        - gochecknoglobals
+      source: "var .*Script string"
