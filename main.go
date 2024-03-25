@@ -34,7 +34,7 @@ func main() {
 	if ok {
 		bugsnag.Configure(bugsnag.Configuration{
 			APIKey:     bugsnagAPIKey,
-			AppVersion: "v1.4.0",
+			AppVersion: "v1.4.1",
 		})
 	}
 
@@ -158,6 +158,11 @@ func setDyndnsIPAddress(ctx context.Context, client *http.Client, r DynDNSReques
 		return errors.Wrapf(err, "Unable to set IP Address for domain: %s", r.DomainName)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Unable to set IP Address for domain, got code: %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to read response body for domain: %s", r.DomainName)
