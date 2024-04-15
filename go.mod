@@ -1,7 +1,7 @@
 module github.com/sazap10/ovh-ip-updater-go
 
 require (
-	github.com/bugsnag/bugsnag-go/v2 v2.3.1
+	github.com/bugsnag/bugsnag-go/v2 v2.4.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
