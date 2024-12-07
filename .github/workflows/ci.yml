@@ -7,14 +7,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: 1.22
+    - name: Install asdf & tools
+      uses: asdf-vm/actions/install@v3
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: v1.56.2
+      run: golangci-lint run
 
   push:
     needs: test

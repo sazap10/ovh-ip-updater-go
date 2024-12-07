@@ -4,8 +4,6 @@ run:
   build-tags:
     - ci
 
-  skip-dirs:
-    - test/mock
   timeout: 5m
 
 linters-settings:
@@ -80,7 +78,6 @@ linters-settings:
       - name: unreachable-code
       - name: redefines-builtin-id
   stylecheck:
-    go: "1.22"
     # https://staticcheck.io/docs/options#checks
     checks: ["-ST1005"]
 
@@ -105,7 +102,7 @@ linters:
     - errname
     - errorlint
     - exhaustive
-    - exportloopref
+    - copyloopvar
     - forbidigo
     - forcetypeassert
     - funlen
