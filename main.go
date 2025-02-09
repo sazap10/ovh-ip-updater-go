@@ -92,7 +92,7 @@ func main() {
 }
 
 func getIPAddressWithRetry(ctx context.Context, client *http.Client) (string, error) {
-	operation := 	func() (string, error) {
+	operation := func() (string, error) {
 		return getIPAddress(ctx, client)
 	}
 	notify := func(err error, d time.Duration) {
@@ -133,7 +133,7 @@ func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
 }
 
 func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, r DynDNSRequest) error {
-	operation := 	func() (string, error) {
+	operation := func() (string, error) {
 		return setDyndnsIPAddress(ctx, client, r)
 	}
 	notify := func(err error, d time.Duration) {
