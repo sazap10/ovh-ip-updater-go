@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/bugsnag/bugsnag-go/v2"
-	"github.com/cenkalti/backoff/v4"
+	"github.com/cenkalti/backoff/v5"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 )
@@ -92,14 +92,17 @@ func main() {
 }
 
 func getIPAddressWithRetry(ctx context.Context, client *http.Client) (string, error) {
-	ip, err := backoff.RetryNotifyWithData(
-		func() (string, error) {
-			return getIPAddress(ctx, client)
-		},
-		backoff.NewExponentialBackOff(),
-		func(err error, d time.Duration) {
-			log.Printf("Problem getting IP address: %s, retrying in %s\n", err, d)
-		},
+	operation := func() (string, error) {
+		return getIPAddress(ctx, client)
+	}
+	notify := func(err error, d time.Duration) {
+		log.Printf("Problem getting IP address: %s, retrying in %s\n", err, d)
+	}
+	ip, err := backoff.Retry(
+		ctx,
+		operation,
+		backoff.WithBackOff(backoff.NewExponentialBackOff()),
+		backoff.WithNotify(notify),
 	)
 	if err != nil {
 		return "", errors.Wrapf(err, "Unable to get IP address, retries exhausted")
@@ -130,45 +133,49 @@ func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
 }
 
 func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, r DynDNSRequest) error {
-	err := backoff.RetryNotify(
-		func() error {
-			return setDyndnsIPAddress(ctx, client, r)
-		},
-		backoff.NewExponentialBackOff(),
-		func(err error, d time.Duration) {
-			log.Printf("Unable to set dyndns ip for domain %s: %s, retrying in %s\n", r.DomainName, err, d)
-		},
+	operation := func() (string, error) {
+		return setDyndnsIPAddress(ctx, client, r)
+	}
+	notify := func(err error, d time.Duration) {
+		log.Printf("Unable to set dyndns ip for domain %s: %s, retrying in %s\n", r.DomainName, err, d)
+	}
+
+	result, err := backoff.Retry(
+		ctx,
+		operation,
+		backoff.WithBackOff(backoff.NewExponentialBackOff()),
+		backoff.WithNotify(notify),
 	)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to set dyndns ip for domain %s, retries exhausted", r.DomainName)
 	}
+	log.Printf("Set dyndns ip for domain %s: %s\n", r.DomainName, result)
 	return nil
 }
 
-func setDyndnsIPAddress(ctx context.Context, client *http.Client, r DynDNSRequest) error {
+func setDyndnsIPAddress(ctx context.Context, client *http.Client, r DynDNSRequest) (string, error) {
 	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", r.DomainName, r.IPAddress)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to create request to set IP Address for domain: %s", r.DomainName)
+		return "", errors.Wrapf(err, "Unable to create request to set IP Address for domain: %s", r.DomainName)
 	}
 	req.SetBasicAuth(r.Username, r.Password)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to set IP Address for domain: %s", r.DomainName)
+		return "", errors.Wrapf(err, "Unable to set IP Address for domain: %s", r.DomainName)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Unable to set IP Address for domain, got code: %d", resp.StatusCode)
+		return "", fmt.Errorf("Unable to set IP Address for domain, got code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to read response body for domain: %s", r.DomainName)
+		return "", errors.Wrapf(err, "Unable to read response body for domain: %s", r.DomainName)
 	}
-	log.Println(string(body))
-	return nil
+	return string(body), nil
 }
 
 func getDomains() ([]string, bool) {
