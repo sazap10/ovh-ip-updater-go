@@ -1,7 +1,7 @@
 ################################################################################
 # BUILDER/DEVELOPMENT IMAGE
 ################################################################################
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 # Add git for downloading dependencies
 RUN apk add --no-cache git gcc g++ libc-dev
@@ -21,7 +21,7 @@ RUN go build
 # LINT IMAGE
 ################################################################################
 
-FROM golang:1.23 AS ci
+FROM golang:1.24 AS ci
 
 # Ensure we run all go commands against the vendor folder
 ENV GOFLAGS -tags=ci
