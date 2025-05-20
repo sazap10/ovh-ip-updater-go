@@ -24,7 +24,7 @@ RUN go build
 FROM golang:1.24 AS ci
 
 # Ensure we run all go commands against the vendor folder
-ENV GOFLAGS -tags=ci
+ENV GOFLAGS=-tags=ci
 
 # Install linter
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.63.3
