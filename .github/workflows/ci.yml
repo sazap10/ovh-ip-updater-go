@@ -9,12 +9,18 @@ jobs:
       uses: actions/checkout@v4
     - name: Install asdf & tools
       uses: asdf-vm/actions/install@v4
-      with:
-        asdf_branch: v0.15.0
     - name: golangci-lint
       run: golangci-lint run
 
   push:
+    strategy:
+      matrix:
+        build: [
+            {platform: linux/amd64, cache: cache-amd64},
+            {platform: linux/arm/v7, cache: cache-armv7},
+            {platform: linux/arm/v8, cache: cache-armv7},
+            {platform: linux/arm64, cache: cache-arm64},
+        ]
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -50,7 +56,7 @@ jobs:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@master
       with:
-        platforms: all
+        platforms: arm64,arm
 
     - name: Set up Docker Buildx
       id: buildx
@@ -69,11 +75,11 @@ jobs:
         builder: ${{ steps.buildx.outputs.name }}
         context: .
         file: ./Dockerfile
-        platforms: linux/amd64,linux/arm64,linux/arm/v7
+        platforms: ${{ matrix.build.platform }}
         push: true
         tags: ${{ steps.prep.outputs.tags }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=registry,ref=${{ steps.prep.outputs.docker_image }}:${{ matrix.build.cache }}
+        cache-to: type=registry,ref=${{ steps.prep.outputs.docker_image}}:${{ matrix.build.cache }},mode=max
     - name: Report build to bugsnag
       uses: sazap10/bugsnag-builds-action@master
       if: steps.prep.outputs.push_type == 'tags'
