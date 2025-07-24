@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/bugsnag/bugsnag-go/v2 v2.6.1
-	github.com/cenkalti/backoff/v5 v5.0.2
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
 )
