@@ -30,7 +30,7 @@ jobs:
       id: set-platforms
       run: |
         # Extract all platforms from the matrix and output as JSON
-        PLATFORMS='${{ toJson(strategy.matrix.build.*.platform) }}'
+        PLATFORMS='${{ toJson(strategy.matrix.build[*].platform) }}'
         echo "platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
     - name: Checkout
       uses: actions/checkout@v5
