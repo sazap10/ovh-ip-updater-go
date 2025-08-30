@@ -122,7 +122,7 @@ jobs:
         LATEST_IMAGES=""
 
         # Convert JSON array to space-separated list (assumes flat array of strings)
-        for platform in $(echo '${{ needs.push.outputs.platforms }}' | tr -d '[]" ' | tr ',' '\n'); do
+        for platform in $(echo '${{ needs.push.outputs.platforms }}' | jq -r '.[]'); do
           PLATFORM_TAG=$(echo "$platform" | sed 's/\//-/g')
           VERSION_IMAGES="$VERSION_IMAGES ${DOCKER_IMAGE}:${VERSION}-${PLATFORM_TAG}"
           SHORTREF_IMAGES="$SHORTREF_IMAGES ${DOCKER_IMAGE}:${SHORTREF}-${PLATFORM_TAG}"
@@ -145,7 +145,7 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Create and push manifest
-      if: steps.prep.outputs.version == 'latest' || steps.prep.outputs.push_type == 'tags'
+      if: github.ref == 'refs/heads/master' || steps.prep.outputs.push_type == 'tags'  
       run: |
         DOCKER_IMAGE=${{ steps.prep.outputs.docker_image }}
         VERSION=${{ steps.prep.outputs.version }}
