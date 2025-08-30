@@ -95,7 +95,7 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
-    - name: Prepare
+    - name: Prepare manifest
       id: prep
       run: |
         DOCKER_IMAGE=${{ secrets.DOCKER_USERNAME }}/${GITHUB_REPOSITORY#*/}
@@ -109,11 +109,27 @@ jobs:
 
         PUSH_TYPE=$(echo $GITHUB_REF | cut -d / -f 2)
 
+        # Extract platforms from the matrix build array and convert to tag format
+        PLATFORMS='${{ toJson(strategy.matrix.build.*.platform) }}'
+        VERSION_IMAGES=""
+        SHORTREF_IMAGES=""
+        LATEST_IMAGES=""
+
+        for platform in $(echo '${{ toJson(strategy.matrix.build.*.platform) }}' | jq -r '.[]'); do
+          PLATFORM_TAG=$(echo "$platform" | sed 's/\//-/g')
+          VERSION_IMAGES="$VERSION_IMAGES ${DOCKER_IMAGE}:${VERSION}-${PLATFORM_TAG}"
+          SHORTREF_IMAGES="$SHORTREF_IMAGES ${DOCKER_IMAGE}:${SHORTREF}-${PLATFORM_TAG}"
+          LATEST_IMAGES="$LATEST_IMAGES ${DOCKER_IMAGE}:latest-${PLATFORM_TAG}"
+        done
+
         # Set output parameters.
         echo ::set-output name=docker_image::${DOCKER_IMAGE}
         echo ::set-output name=version::${VERSION}
         echo ::set-output name=shortref::${SHORTREF}
         echo ::set-output name=push_type::${PUSH_TYPE}
+        echo ::set-output name=version_images::${VERSION_IMAGES}
+        echo ::set-output name=shortref_images::${SHORTREF_IMAGES}
+        echo ::set-output name=latest_images::${LATEST_IMAGES}
 
     - name: Login to DockerHub
       uses: docker/login-action@v3
@@ -121,7 +137,7 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Create and push manifest for latest
+    - name: Create and push manifest
       if: steps.prep.outputs.version == 'latest' || steps.prep.outputs.push_type == 'tags'
       run: |
         DOCKER_IMAGE=${{ steps.prep.outputs.docker_image }}
@@ -129,30 +145,15 @@ jobs:
         SHORTREF=${{ steps.prep.outputs.shortref }}
 
         # Create manifest for version tag
-        docker manifest create ${DOCKER_IMAGE}:${VERSION} \
-          ${DOCKER_IMAGE}:${VERSION}-linux-amd64 \
-          ${DOCKER_IMAGE}:${VERSION}-linux-arm-v7 \
-          ${DOCKER_IMAGE}:${VERSION}-linux-arm-v8 \
-          ${DOCKER_IMAGE}:${VERSION}-linux-arm64
-
+        docker manifest create ${DOCKER_IMAGE}:${VERSION} ${{ steps.prep.outputs.version_images }}
         docker manifest push ${DOCKER_IMAGE}:${VERSION}
 
         # Create manifest for short ref
-        docker manifest create ${DOCKER_IMAGE}:${SHORTREF} \
-          ${DOCKER_IMAGE}:${SHORTREF}-linux-amd64 \
-          ${DOCKER_IMAGE}:${SHORTREF}-linux-arm-v7 \
-          ${DOCKER_IMAGE}:${SHORTREF}-linux-arm-v8 \
-          ${DOCKER_IMAGE}:${SHORTREF}-linux-arm64
-
+        docker manifest create ${DOCKER_IMAGE}:${SHORTREF} ${{ steps.prep.outputs.shortref_images }}
         docker manifest push ${DOCKER_IMAGE}:${SHORTREF}
 
         # If this is a version tag, also create latest manifest
         if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-          docker manifest create ${DOCKER_IMAGE}:latest \
-            ${DOCKER_IMAGE}:latest-linux-amd64 \
-            ${DOCKER_IMAGE}:latest-linux-arm-v7 \
-            ${DOCKER_IMAGE}:latest-linux-arm-v8 \
-            ${DOCKER_IMAGE}:latest-linux-arm64
-
+          docker manifest create ${DOCKER_IMAGE}:latest ${{ steps.prep.outputs.latest_images }}
           docker manifest push ${DOCKER_IMAGE}:latest
         fi
