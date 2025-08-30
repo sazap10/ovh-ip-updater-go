@@ -145,7 +145,8 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Create and push manifest
-      if: github.ref == 'refs/heads/master' || steps.prep.outputs.push_type == 'tags'  
+      # Temporarily allow on any branch for testing
+      # if: github.ref == 'refs/heads/master' || steps.prep.outputs.push_type == 'tags'  
       run: |
         DOCKER_IMAGE=${{ steps.prep.outputs.docker_image }}
         VERSION=${{ steps.prep.outputs.version }}
