@@ -30,7 +30,7 @@ jobs:
       id: set-platforms
       run: |
         # Extract all platforms from the matrix and output as JSON
-        PLATFORMS='${{ toJson(strategy.matrix.build[*].platform) }}'
+        PLATFORMS='${{ toJson(strategy.matrix.build.platform) }}'
         echo "platforms=${PLATFORMS}" >> $GITHUB_OUTPUT
     - name: Checkout
       uses: actions/checkout@v5
@@ -146,7 +146,7 @@ jobs:
 
     - name: Create and push manifest
       # Temporarily allow on any branch for testing
-      # if: github.ref == 'refs/heads/master' || steps.prep.outputs.push_type == 'tags'  
+      # if: github.ref == 'refs/heads/master' || steps.prep.outputs.push_type == 'tags'
       run: |
         DOCKER_IMAGE=${{ steps.prep.outputs.docker_image }}
         VERSION=${{ steps.prep.outputs.version }}
