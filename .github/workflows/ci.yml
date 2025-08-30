@@ -23,7 +23,15 @@ jobs:
         ]
     needs: test
     runs-on: ubuntu-latest
+    outputs:
+      platforms: ${{ steps.set-platforms.outputs.platforms }}
     steps:
+    - name: Set platforms output
+      id: set-platforms
+      run: |
+        # Extract all platforms from the matrix and output as JSON
+        PLATFORMS='${{ toJson(strategy.matrix.build.*.platform) }}'
+        echo "::set-output name=platforms::$PLATFORMS"
     - name: Checkout
       uses: actions/checkout@v5
     - name: Prepare
@@ -109,13 +117,11 @@ jobs:
 
         PUSH_TYPE=$(echo $GITHUB_REF | cut -d / -f 2)
 
-        # Extract platforms from the matrix build array and convert to tag format
-        PLATFORMS='${{ toJson(strategy.matrix.build.*.platform) }}'
         VERSION_IMAGES=""
         SHORTREF_IMAGES=""
         LATEST_IMAGES=""
 
-        for platform in $(echo '${{ toJson(strategy.matrix.build.*.platform) }}' | jq -r '.[]'); do
+        for platform in $(echo '${{ needs.push.outputs.platforms }}' | jq -r '.[]'); do
           PLATFORM_TAG=$(echo "$platform" | sed 's/\//-/g')
           VERSION_IMAGES="$VERSION_IMAGES ${DOCKER_IMAGE}:${VERSION}-${PLATFORM_TAG}"
           SHORTREF_IMAGES="$SHORTREF_IMAGES ${DOCKER_IMAGE}:${SHORTREF}-${PLATFORM_TAG}"
