@@ -121,7 +121,8 @@ jobs:
         SHORTREF_IMAGES=""
         LATEST_IMAGES=""
 
-        for platform in $(echo '${{ needs.push.outputs.platforms }}' | jq -r '.[]'); do
+        # Convert JSON array to space-separated list (assumes flat array of strings)
+        for platform in $(echo '${{ needs.push.outputs.platforms }}' | tr -d '[]" ' | tr ',' '\n'); do
           PLATFORM_TAG=$(echo "$platform" | sed 's/\//-/g')
           VERSION_IMAGES="$VERSION_IMAGES ${DOCKER_IMAGE}:${VERSION}-${PLATFORM_TAG}"
           SHORTREF_IMAGES="$SHORTREF_IMAGES ${DOCKER_IMAGE}:${SHORTREF}-${PLATFORM_TAG}"
