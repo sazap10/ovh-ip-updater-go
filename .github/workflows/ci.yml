@@ -37,13 +37,14 @@ jobs:
         if [[ $VERSION == "master" ]]; then
           VERSION=latest
         fi
-        TAGS="${DOCKER_IMAGE}:${VERSION},${DOCKER_IMAGE}:${SHORTREF}"
 
-        # If the VERSION looks like a version number, assume that
-        # this is the most recent version of the image and also
-        # tag it 'latest'.
+        # Create platform-specific tag for individual builds
+        PLATFORM_TAG=$(echo "${{ matrix.build.platform }}" | sed 's/\//-/g')
+        TAGS="${DOCKER_IMAGE}:${VERSION}-${PLATFORM_TAG},${DOCKER_IMAGE}:${SHORTREF}-${PLATFORM_TAG}"
+
+        # For version tags, also add platform-specific latest
         if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-          TAGS="$TAGS,${DOCKER_IMAGE}:latest"
+          TAGS="$TAGS,${DOCKER_IMAGE}:latest-${PLATFORM_TAG}"
         fi
 
         PUSH_TYPE=$(echo $GITHUB_REF | cut -d / -f 2)
@@ -52,6 +53,7 @@ jobs:
         echo ::set-output name=tags::${TAGS}
         echo ::set-output name=docker_image::${DOCKER_IMAGE}
         echo ::set-output name=push_type::${PUSH_TYPE}
+        echo ::set-output name=version::${VERSION}
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@master
@@ -85,3 +87,72 @@ jobs:
       if: steps.prep.outputs.push_type == 'tags'
       env:
         BUGSNAG_API_KEY: ${{ secrets.BUGSNAG_API_KEY }}
+
+  manifest:
+    needs: push
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Prepare
+      id: prep
+      run: |
+        DOCKER_IMAGE=${{ secrets.DOCKER_USERNAME }}/${GITHUB_REPOSITORY#*/}
+        SHORTREF=${GITHUB_SHA::8}
+
+        # If this is git tag, use the tag name as a docker tag
+        VERSION=$(echo $GITHUB_REF | cut -d / -f 3)
+        if [[ $VERSION == "master" ]]; then
+          VERSION=latest
+        fi
+
+        PUSH_TYPE=$(echo $GITHUB_REF | cut -d / -f 2)
+
+        # Set output parameters.
+        echo ::set-output name=docker_image::${DOCKER_IMAGE}
+        echo ::set-output name=version::${VERSION}
+        echo ::set-output name=shortref::${SHORTREF}
+        echo ::set-output name=push_type::${PUSH_TYPE}
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Create and push manifest for latest
+      if: steps.prep.outputs.version == 'latest' || steps.prep.outputs.push_type == 'tags'
+      run: |
+        DOCKER_IMAGE=${{ steps.prep.outputs.docker_image }}
+        VERSION=${{ steps.prep.outputs.version }}
+        SHORTREF=${{ steps.prep.outputs.shortref }}
+
+        # Create manifest for version tag
+        docker manifest create ${DOCKER_IMAGE}:${VERSION} \
+          ${DOCKER_IMAGE}:${VERSION}-linux-amd64 \
+          ${DOCKER_IMAGE}:${VERSION}-linux-arm-v7 \
+          ${DOCKER_IMAGE}:${VERSION}-linux-arm-v8 \
+          ${DOCKER_IMAGE}:${VERSION}-linux-arm64
+
+        docker manifest push ${DOCKER_IMAGE}:${VERSION}
+
+        # Create manifest for short ref
+        docker manifest create ${DOCKER_IMAGE}:${SHORTREF} \
+          ${DOCKER_IMAGE}:${SHORTREF}-linux-amd64 \
+          ${DOCKER_IMAGE}:${SHORTREF}-linux-arm-v7 \
+          ${DOCKER_IMAGE}:${SHORTREF}-linux-arm-v8 \
+          ${DOCKER_IMAGE}:${SHORTREF}-linux-arm64
+
+        docker manifest push ${DOCKER_IMAGE}:${SHORTREF}
+
+        # If this is a version tag, also create latest manifest
+        if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+          docker manifest create ${DOCKER_IMAGE}:latest \
+            ${DOCKER_IMAGE}:latest-linux-amd64 \
+            ${DOCKER_IMAGE}:latest-linux-arm-v7 \
+            ${DOCKER_IMAGE}:latest-linux-arm-v8 \
+            ${DOCKER_IMAGE}:latest-linux-arm64
+
+          docker manifest push ${DOCKER_IMAGE}:latest
+        fi
