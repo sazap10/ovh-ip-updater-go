@@ -148,10 +148,6 @@ jobs:
         VERSION=${{ steps.prep.outputs.version }}
         SHORTREF=${{ steps.prep.outputs.shortref }}
 
-        # Delete any existing manifests to avoid conflicts
-        docker manifest rm ${DOCKER_IMAGE}:${VERSION} 2>/dev/null || true
-        docker manifest rm ${DOCKER_IMAGE}:${SHORTREF} 2>/dev/null || true
-
         # Create manifest for version tag
         docker manifest create ${DOCKER_IMAGE}:${VERSION} ${{ steps.prep.outputs.version_images }}
         docker manifest push ${DOCKER_IMAGE}:${VERSION}
@@ -162,7 +158,6 @@ jobs:
 
         # If this is a version tag, also create latest manifest
         if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-          docker manifest rm ${DOCKER_IMAGE}:latest 2>/dev/null || true
           docker manifest create ${DOCKER_IMAGE}:latest ${{ steps.prep.outputs.latest_images }}
           docker manifest push ${DOCKER_IMAGE}:latest
         fi
