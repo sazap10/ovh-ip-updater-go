@@ -17,11 +17,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-type DynDNSRequest struct {
-	IPAddress  string
-	DomainName string
-	Username   string
-	Password   string
+type dynDNSRequest struct {
+	ipAddress  string
+	domainName string
+	username   string
+	password   string
 }
 
 func main() {
@@ -72,11 +72,11 @@ func main() {
 		case prevIPAddress != ipAddress:
 			for _, domainName := range domains {
 				log.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
-				requestArgs := DynDNSRequest{
-					IPAddress:  ipAddress,
-					DomainName: domainName,
-					Username:   username,
-					Password:   password,
+				requestArgs := dynDNSRequest{
+					ipAddress:  ipAddress,
+					domainName: domainName,
+					username:   username,
+					password:   password,
 				}
 				err = setDyndnsIPAddressWithRetry(ctx, client, requestArgs)
 				if err != nil {
@@ -115,7 +115,7 @@ func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "Unable to create request to api.ipify.org")
 	}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec
 	if err != nil {
 		return "", errors.Wrap(err, "Unable to get IP address")
 	}
@@ -132,12 +132,12 @@ func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
 	return string(body), nil
 }
 
-func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, r DynDNSRequest) error {
+func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, r dynDNSRequest) error {
 	operation := func() (string, error) {
 		return setDyndnsIPAddress(ctx, client, r)
 	}
 	notify := func(err error, d time.Duration) {
-		log.Printf("Unable to set dyndns ip for domain %s: %s, retrying in %s\n", r.DomainName, err, d)
+		log.Printf("Unable to set dyndns ip for domain %s: %s, retrying in %s\n", r.domainName, err, d)
 	}
 
 	result, err := backoff.Retry(
@@ -147,23 +147,23 @@ func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, r Dyn
 		backoff.WithNotify(notify),
 	)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to set dyndns ip for domain %s, retries exhausted", r.DomainName)
+		return errors.Wrapf(err, "Unable to set dyndns ip for domain %s, retries exhausted", r.domainName)
 	}
-	log.Printf("Set dyndns ip for domain %s: %s\n", r.DomainName, result)
+	log.Printf("Set dyndns ip for domain %s: %s\n", r.domainName, result)
 	return nil
 }
 
-func setDyndnsIPAddress(ctx context.Context, client *http.Client, r DynDNSRequest) (string, error) {
-	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", r.DomainName, r.IPAddress)
+func setDyndnsIPAddress(ctx context.Context, client *http.Client, r dynDNSRequest) (string, error) {
+	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", r.domainName, r.ipAddress)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "Unable to create request to set IP Address for domain: %s", r.DomainName)
+		return "", errors.Wrapf(err, "Unable to create request to set IP Address for domain: %s", r.domainName)
 	}
-	req.SetBasicAuth(r.Username, r.Password)
+	req.SetBasicAuth(r.username, r.password)
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec
 	if err != nil {
-		return "", errors.Wrapf(err, "Unable to set IP Address for domain: %s", r.DomainName)
+		return "", errors.Wrapf(err, "Unable to set IP Address for domain: %s", r.domainName)
 	}
 	defer resp.Body.Close()
 
@@ -173,7 +173,7 @@ func setDyndnsIPAddress(ctx context.Context, client *http.Client, r DynDNSReques
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrapf(err, "Unable to read response body for domain: %s", r.DomainName)
+		return "", errors.Wrapf(err, "Unable to read response body for domain: %s", r.domainName)
 	}
 	return string(body), nil
 }
