@@ -115,7 +115,7 @@ func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "Unable to create request to api.ipify.org")
 	}
-	resp, err := client.Do(req) //nolint:gosec
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "Unable to get IP address")
 	}
@@ -161,7 +161,7 @@ func setDyndnsIPAddress(ctx context.Context, client *http.Client, r dynDNSReques
 	}
 	req.SetBasicAuth(r.username, r.password)
 
-	resp, err := client.Do(req) //nolint:gosec
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", errors.Wrapf(err, "Unable to set IP Address for domain: %s", r.domainName)
 	}
