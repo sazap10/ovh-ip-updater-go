@@ -13,47 +13,27 @@ jobs:
       run: golangci-lint run
 
   push:
-    strategy:
-      matrix:
-        build: [
-            {platform: linux/amd64, cache: cache-amd64},
-            {platform: linux/arm/v7, cache: cache-armv7},
-            {platform: linux/arm/v8, cache: cache-armv8},
-            {platform: linux/arm64, cache: cache-arm64},
-        ]
     needs: test
     runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ secrets.DOCKER_USERNAME }}/${{ github.event.repository.name }}
+      # Only master and version tags are published; everything else is a
+      # build-only validation run.
+      RELEASE: ${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Prepare
-      id: prep
-      run: |
-        DOCKER_IMAGE=${{ secrets.DOCKER_USERNAME }}/${GITHUB_REPOSITORY#*/}
-        SHORTREF=${GITHUB_SHA::8}
 
-        # If this is git tag, use the tag name as a docker tag
-        VERSION=$(echo $GITHUB_REF | cut -d / -f 3)
-        if [[ $VERSION == "master" ]]; then
-          VERSION=latest
-        fi
-
-        # Create platform-specific tag for individual builds
-        PLATFORM_TAG=$(echo "${{ matrix.build.platform }}" | sed 's/\//-/g')
-        TAGS="${DOCKER_IMAGE}:${VERSION}-${PLATFORM_TAG},${DOCKER_IMAGE}:${SHORTREF}-${PLATFORM_TAG}"
-
-        # For version tags, also add platform-specific latest
-        if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-          TAGS="$TAGS,${DOCKER_IMAGE}:latest-${PLATFORM_TAG}"
-        fi
-
-        PUSH_TYPE=$(echo $GITHUB_REF | cut -d / -f 2)
-
-        # Set output parameters.
-        echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-        echo "docker_image=${DOCKER_IMAGE}" >> $GITHUB_OUTPUT
-        echo "push_type=${PUSH_TYPE}" >> $GITHUB_OUTPUT
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.IMAGE }}
+        flavor: latest=false
+        tags: |
+          type=raw,value=latest,enable=${{ env.RELEASE }}
+          type=ref,event=tag
+          type=sha,prefix=,format=short
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@master
@@ -61,7 +41,6 @@ jobs:
         platforms: arm64,arm
 
     - name: Set up Docker Buildx
-      id: buildx
       uses: docker/setup-buildx-action@master
 
     - name: Login to DockerHub
@@ -71,92 +50,25 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build
+    - name: Build and push
       uses: docker/build-push-action@v7
       with:
         provenance: false
         sbom: false
-        builder: ${{ steps.buildx.outputs.name }}
         context: .
         file: ./Dockerfile
-        platforms: ${{ matrix.build.platform }}
-        push: true
-        tags: ${{ steps.prep.outputs.tags }}
-        cache-from: type=registry,ref=${{ steps.prep.outputs.docker_image }}:${{ matrix.build.cache }}
-        cache-to: type=registry,ref=${{ steps.prep.outputs.docker_image}}:${{ matrix.build.cache }},mode=max
+        # Buildx assembles the multi-arch manifest in a single push. arm is
+        # emulated via QEMU, so only release builds pay for the full platform
+        # set; branch builds validate on amd64 only.
+        platforms: ${{ env.RELEASE == 'true' && 'linux/amd64,linux/arm/v7,linux/arm/v8,linux/arm64' || 'linux/amd64' }}
+        push: ${{ env.RELEASE }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+        cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max
+
     - name: Report build to bugsnag
       uses: sazap10/bugsnag-builds-action@master
-      if: steps.prep.outputs.push_type == 'tags'
+      if: startsWith(github.ref, 'refs/tags/')
       env:
         BUGSNAG_API_KEY: ${{ secrets.BUGSNAG_API_KEY }}
-
-  manifest:
-    needs: push
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Prepare manifest
-      id: prep
-      run: |
-        DOCKER_IMAGE=${{ secrets.DOCKER_USERNAME }}/${GITHUB_REPOSITORY#*/}
-        SHORTREF=${GITHUB_SHA::8}
-
-        # If this is git tag, use the tag name as a docker tag
-        VERSION=$(echo $GITHUB_REF | cut -d / -f 3)
-        if [[ $VERSION == "master" ]]; then
-          VERSION=latest
-        fi
-
-        PUSH_TYPE=$(echo $GITHUB_REF | cut -d / -f 2)
-
-        VERSION_IMAGES=""
-        SHORTREF_IMAGES=""
-        LATEST_IMAGES=""
-
-        # Define platforms statically (must match the matrix above)
-        PLATFORMS="linux/amd64 linux/arm/v7 linux/arm/v8 linux/arm64"
-
-        for platform in $PLATFORMS; do
-          PLATFORM_TAG=$(echo "$platform" | sed 's/\//-/g')
-          VERSION_IMAGES="$VERSION_IMAGES ${DOCKER_IMAGE}:${VERSION}-${PLATFORM_TAG}"
-          SHORTREF_IMAGES="$SHORTREF_IMAGES ${DOCKER_IMAGE}:${SHORTREF}-${PLATFORM_TAG}"
-          LATEST_IMAGES="$LATEST_IMAGES ${DOCKER_IMAGE}:latest-${PLATFORM_TAG}"
-        done
-
-        # Set output parameters.
-        echo "docker_image=${DOCKER_IMAGE}" >> $GITHUB_OUTPUT
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
-        echo "shortref=${SHORTREF}" >> $GITHUB_OUTPUT
-        echo "push_type=${PUSH_TYPE}" >> $GITHUB_OUTPUT
-        echo "version_images=${VERSION_IMAGES}" >> $GITHUB_OUTPUT
-        echo "shortref_images=${SHORTREF_IMAGES}" >> $GITHUB_OUTPUT
-        echo "latest_images=${LATEST_IMAGES}" >> $GITHUB_OUTPUT
-
-    - name: Login to DockerHub
-      uses: docker/login-action@v4
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-
-    - name: Create and push manifest
-      if: github.ref == 'refs/heads/master' || steps.prep.outputs.push_type == 'tags'
-      run: |
-        DOCKER_IMAGE=${{ steps.prep.outputs.docker_image }}
-        VERSION=${{ steps.prep.outputs.version }}
-        SHORTREF=${{ steps.prep.outputs.shortref }}
-
-        # Create manifest for version tag
-        docker manifest create ${DOCKER_IMAGE}:${VERSION} ${{ steps.prep.outputs.version_images }}
-        docker manifest push ${DOCKER_IMAGE}:${VERSION}
-
-        # Create manifest for short ref
-        docker manifest create ${DOCKER_IMAGE}:${SHORTREF} ${{ steps.prep.outputs.shortref_images }}
-        docker manifest push ${DOCKER_IMAGE}:${SHORTREF}
-
-        # If this is a version tag, also create latest manifest
-        if [[ $VERSION =~ ^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-          docker manifest create ${DOCKER_IMAGE}:latest ${{ steps.prep.outputs.latest_images }}
-          docker manifest push ${DOCKER_IMAGE}:latest
-        fi
