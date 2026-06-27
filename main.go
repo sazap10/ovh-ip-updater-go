@@ -12,9 +12,16 @@ import (
 	"time"
 
 	"github.com/bugsnag/bugsnag-go/v2"
-	"github.com/cenkalti/backoff/v5"
+	"github.com/cenkalti/backoff/v6"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
+)
+
+// Default endpoints. The retry helpers take the URL as a parameter so tests can
+// point them at a local server.
+const (
+	defaultIPAddressURL = "https://api.ipify.org"
+	defaultOVHUpdateURL = "https://www.ovh.com/nic/update"
 )
 
 type dynDNSRequest struct {
@@ -65,7 +72,7 @@ func main() {
 	for {
 		prevIPAddress = ipAddress
 
-		ipAddress, err := getIPAddressWithRetry(ctx, client)
+		ipAddress, err := getIPAddressWithRetry(ctx, client, defaultIPAddressURL)
 		switch {
 		case err != nil:
 			notify(err)
@@ -78,7 +85,7 @@ func main() {
 					username:   username,
 					password:   password,
 				}
-				err = setDyndnsIPAddressWithRetry(ctx, client, requestArgs)
+				err = setDyndnsIPAddressWithRetry(ctx, client, defaultOVHUpdateURL, requestArgs)
 				if err != nil {
 					notify(err)
 				}
@@ -91,27 +98,26 @@ func main() {
 	}
 }
 
-func getIPAddressWithRetry(ctx context.Context, client *http.Client) (string, error) {
+func getIPAddressWithRetry(ctx context.Context, client *http.Client, url string, opts ...backoff.RetryOption) (string, error) {
 	operation := func() (string, error) {
-		return getIPAddress(ctx, client)
+		return getIPAddress(ctx, client, url)
 	}
 	notify := func(err error, d time.Duration) {
 		log.Printf("Problem getting IP address: %s, retrying in %s\n", err, d)
 	}
-	ip, err := backoff.Retry(
-		ctx,
-		operation,
+	retryOpts := append([]backoff.RetryOption{
 		backoff.WithBackOff(backoff.NewExponentialBackOff()),
 		backoff.WithNotify(notify),
-	)
+	}, opts...)
+	ip, err := backoff.Retry(ctx, operation, retryOpts...)
 	if err != nil {
 		return "", errors.Wrapf(err, "Unable to get IP address, retries exhausted")
 	}
 	return ip, nil
 }
 
-func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.ipify.org", nil)
+func getIPAddress(ctx context.Context, client *http.Client, url string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "Unable to create request to api.ipify.org")
 	}
@@ -132,20 +138,19 @@ func getIPAddress(ctx context.Context, client *http.Client) (string, error) {
 	return string(body), nil
 }
 
-func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, r dynDNSRequest) error {
+func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, baseURL string, r dynDNSRequest, opts ...backoff.RetryOption) error {
 	operation := func() (string, error) {
-		return setDyndnsIPAddress(ctx, client, r)
+		return setDyndnsIPAddress(ctx, client, baseURL, r)
 	}
 	notify := func(err error, d time.Duration) {
 		log.Printf("Unable to set dyndns ip for domain %s: %s, retrying in %s\n", r.domainName, err, d)
 	}
 
-	result, err := backoff.Retry(
-		ctx,
-		operation,
+	retryOpts := append([]backoff.RetryOption{
 		backoff.WithBackOff(backoff.NewExponentialBackOff()),
 		backoff.WithNotify(notify),
-	)
+	}, opts...)
+	result, err := backoff.Retry(ctx, operation, retryOpts...)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to set dyndns ip for domain %s, retries exhausted", r.domainName)
 	}
@@ -153,8 +158,8 @@ func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, r dyn
 	return nil
 }
 
-func setDyndnsIPAddress(ctx context.Context, client *http.Client, r dynDNSRequest) (string, error) {
-	url := fmt.Sprintf("https://www.ovh.com/nic/update?system=dyndns&hostname=%s&myip=%s", r.domainName, r.ipAddress)
+func setDyndnsIPAddress(ctx context.Context, client *http.Client, baseURL string, r dynDNSRequest) (string, error) {
+	url := fmt.Sprintf("%s?system=dyndns&hostname=%s&myip=%s", baseURL, r.domainName, r.ipAddress)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "Unable to create request to set IP Address for domain: %s", r.domainName)
