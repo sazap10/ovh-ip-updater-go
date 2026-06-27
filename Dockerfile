@@ -26,8 +26,10 @@ FROM golang:1.26 AS ci
 # Ensure we run all go commands against the vendor folder
 ENV GOFLAGS=-tags=ci
 
-# Install linter
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s v1.63.3
+# Install linter (keep this version in sync with .tool-versions).
+# The install script is pinned to the matching release tag: the master script's
+# asset matching incorrectly picks up the .tar.gz.sbom.json file for v2 releases.
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.12.2/install.sh | sh -s -- -b /usr/local/bin v2.12.2
 
 WORKDIR /build
 
