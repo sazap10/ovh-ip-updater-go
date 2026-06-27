@@ -7,14 +7,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/bugsnag/bugsnag-go/v2"
 	"github.com/cenkalti/backoff/v6"
 	"github.com/joho/godotenv"
-	"github.com/pkg/errors"
 )
 
 // Default endpoints. The retry helpers take the URL as a parameter so tests can
@@ -32,7 +33,6 @@ type dynDNSRequest struct {
 }
 
 func main() {
-	ctx := context.Background()
 	err := godotenv.Load()
 	if err != nil {
 		log.Println(".env not provided, using environment variables instead")
@@ -62,40 +62,57 @@ func main() {
 
 	sleepDuration := envInt("SLEEP_DURATION", 3600)
 
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	client := &http.Client{
 		Timeout: time.Second * 30,
 	}
 
-	ipAddress := ""
+	ticker := time.NewTicker(time.Duration(sleepDuration) * time.Second)
+	defer ticker.Stop()
+
 	var prevIPAddress string
 
 	for {
-		prevIPAddress = ipAddress
+		prevIPAddress = updateDomains(ctx, client, domains, username, password, prevIPAddress)
 
-		ipAddress, err := getIPAddressWithRetry(ctx, client, defaultIPAddressURL)
-		switch {
-		case err != nil:
-			notify(err)
-		case prevIPAddress != ipAddress:
-			for _, domainName := range domains {
-				log.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
-				requestArgs := dynDNSRequest{
-					ipAddress:  ipAddress,
-					domainName: domainName,
-					username:   username,
-					password:   password,
-				}
-				err = setDyndnsIPAddressWithRetry(ctx, client, defaultOVHUpdateURL, requestArgs)
-				if err != nil {
-					notify(err)
-				}
-			}
-		default:
-			log.Println("IP address is the same, skipping OVH set")
+		select {
+		case <-ctx.Done():
+			log.Println("Shutting down")
+			return
+		case <-ticker.C:
 		}
-
-		time.Sleep(time.Duration(sleepDuration) * time.Second)
 	}
+}
+
+// updateDomains fetches the current public IP and, if it has changed since
+// prevIPAddress, pushes it to each domain's OVH DynDNS record. It returns the IP
+// to use as the previous value on the next cycle.
+func updateDomains(ctx context.Context, client *http.Client, domains []string, username, password, prevIPAddress string) string {
+	ipAddress, err := getIPAddressWithRetry(ctx, client, defaultIPAddressURL)
+	switch {
+	case err != nil:
+		notify(err)
+		return prevIPAddress
+	case prevIPAddress != ipAddress:
+		for _, domainName := range domains {
+			log.Printf("Settings domain: %s to ip: %s\n", domainName, ipAddress)
+			requestArgs := dynDNSRequest{
+				ipAddress:  ipAddress,
+				domainName: domainName,
+				username:   username,
+				password:   password,
+			}
+			if err := setDyndnsIPAddressWithRetry(ctx, client, defaultOVHUpdateURL, requestArgs); err != nil {
+				notify(err)
+			}
+		}
+	default:
+		log.Println("IP address is the same, skipping OVH set")
+	}
+
+	return ipAddress
 }
 
 func getIPAddressWithRetry(ctx context.Context, client *http.Client, url string, opts ...backoff.RetryOption) (string, error) {
@@ -111,19 +128,19 @@ func getIPAddressWithRetry(ctx context.Context, client *http.Client, url string,
 	}, opts...)
 	ip, err := backoff.Retry(ctx, operation, retryOpts...)
 	if err != nil {
-		return "", errors.Wrapf(err, "Unable to get IP address, retries exhausted")
+		return "", fmt.Errorf("Unable to get IP address, retries exhausted: %w", err)
 	}
 	return ip, nil
 }
 
 func getIPAddress(ctx context.Context, client *http.Client, url string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "Unable to create request to api.ipify.org")
+		return "", fmt.Errorf("Unable to create request to api.ipify.org: %w", err)
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", errors.Wrap(err, "Unable to get IP address")
+		return "", fmt.Errorf("Unable to get IP address: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -133,7 +150,7 @@ func getIPAddress(ctx context.Context, client *http.Client, url string) (string,
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "Unable to read api.ipify.org body")
+		return "", fmt.Errorf("Unable to read api.ipify.org body: %w", err)
 	}
 	return string(body), nil
 }
@@ -152,7 +169,7 @@ func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, baseU
 	}, opts...)
 	result, err := backoff.Retry(ctx, operation, retryOpts...)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to set dyndns ip for domain %s, retries exhausted", r.domainName)
+		return fmt.Errorf("Unable to set dyndns ip for domain %s, retries exhausted: %w", r.domainName, err)
 	}
 	log.Printf("Set dyndns ip for domain %s: %s\n", r.domainName, result)
 	return nil
@@ -160,15 +177,15 @@ func setDyndnsIPAddressWithRetry(ctx context.Context, client *http.Client, baseU
 
 func setDyndnsIPAddress(ctx context.Context, client *http.Client, baseURL string, r dynDNSRequest) (string, error) {
 	url := fmt.Sprintf("%s?system=dyndns&hostname=%s&myip=%s", baseURL, r.domainName, r.ipAddress)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return "", errors.Wrapf(err, "Unable to create request to set IP Address for domain: %s", r.domainName)
+		return "", fmt.Errorf("Unable to create request to set IP Address for domain %s: %w", r.domainName, err)
 	}
 	req.SetBasicAuth(r.username, r.password)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", errors.Wrapf(err, "Unable to set IP Address for domain: %s", r.domainName)
+		return "", fmt.Errorf("Unable to set IP Address for domain %s: %w", r.domainName, err)
 	}
 	defer resp.Body.Close()
 
@@ -178,7 +195,7 @@ func setDyndnsIPAddress(ctx context.Context, client *http.Client, baseURL string
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrapf(err, "Unable to read response body for domain: %s", r.domainName)
+		return "", fmt.Errorf("Unable to read response body for domain %s: %w", r.domainName, err)
 	}
 	return string(body), nil
 }
