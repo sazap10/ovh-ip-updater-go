@@ -1,0 +1,23 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # A PAT (or GitHub App token) is required for the release tag to
+          # trigger the Docker publish in ci.yml: tags pushed with the default
+          # GITHUB_TOKEN do not start further workflow runs. With only
+          # GITHUB_TOKEN, release PRs and GitHub Releases are still created, but
+          # the Docker build/push must be run manually.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
