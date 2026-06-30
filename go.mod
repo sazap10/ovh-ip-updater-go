@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/bugsnag/bugsnag-go/v2 v2.6.4
 	github.com/cenkalti/backoff/v6 v6.0.1
+	github.com/cenkalti/backoff/v7 v7.0.0
 	github.com/joho/godotenv v1.5.1
 )
 
