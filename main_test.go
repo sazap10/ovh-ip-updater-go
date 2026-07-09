@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v6"
+	"github.com/cenkalti/backoff/v7"
 )
 
 // fastBackoff returns retry options that retry almost instantly and cap the
@@ -74,7 +74,7 @@ func TestGetIPAddressWithRetry_EventualSuccess(t *testing.T) {
 }
 
 // When retries are exhausted the caller-facing error wraps the underlying
-// failure. v6 returns a *backoff.RetryError carrying the cause and last error,
+// failure. v7 returns a *backoff.RetryError carrying the cause and last error,
 // both of which must remain discoverable through errors.As/errors.Is.
 func TestGetIPAddressWithRetry_Exhausted(t *testing.T) {
 	var hits int32
@@ -92,7 +92,7 @@ func TestGetIPAddressWithRetry_Exhausted(t *testing.T) {
 		t.Fatalf("expected 3 attempts before giving up, got %d", got)
 	}
 
-	// v6 wraps every failure in a *RetryError; confirm it survives main.go's
+	// v7 wraps every failure in a *RetryError; confirm it survives main.go's
 	// errors.Wrapf and reports the exhausted cause.
 	var retryErr *backoff.RetryError
 	if !errors.As(err, &retryErr) {
