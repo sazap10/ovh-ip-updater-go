@@ -41,7 +41,7 @@ func main() {
 	if ok {
 		bugsnag.Configure(bugsnag.Configuration{
 			APIKey:     bugsnagAPIKey,
-			AppVersion: "v1.4.5", // x-release-please-version
+			AppVersion: "v1.4.6", // x-release-please-version
 		})
 	}
 
