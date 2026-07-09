@@ -13,7 +13,7 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         with:
           # A PAT (or GitHub App token) is required for the release tag to
           # trigger the Docker publish in ci.yml: tags pushed with the default
