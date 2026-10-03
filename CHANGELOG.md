@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.7](https://github.com/sazap10/ovh-ip-updater-go/compare/v1.4.6...v1.4.7) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/cenkalti/backoff/v6 to v7 ([#168](https://github.com/sazap10/ovh-ip-updater-go/issues/168)) ([7958271](https://github.com/sazap10/ovh-ip-updater-go/commit/79582712f3cf66c98b7238f4a498ac68693a856b))
+* **deps:** update module github.com/cenkalti/backoff/v7 to v7.0.1 ([#180](https://github.com/sazap10/ovh-ip-updater-go/issues/180)) ([3cdbf1f](https://github.com/sazap10/ovh-ip-updater-go/commit/3cdbf1f611697e53e8705d992188014fe0c7e0b8))
+
 ## [1.4.6](https://github.com/sazap10/ovh-ip-updater-go/compare/v1.4.5...v1.4.6) (2026-07-09)
 
 
